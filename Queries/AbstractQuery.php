@@ -239,4 +239,17 @@ abstract class AbstractQuery
             throw new ConditionNotClosedException();
         }
     }
+
+    /**
+     * Возвращает длину оператора сравнения NULL, который требуется заменить
+     */
+    protected function getNullOperatorLen(string $trimmedText): int
+    {
+        return match (true) {
+            str_ends_with($trimmedText, '!='),
+            str_ends_with($trimmedText, '<>') => 2,
+            str_ends_with($trimmedText, '=')  => 1,
+            default                           => 0,
+        };
+    }
 }

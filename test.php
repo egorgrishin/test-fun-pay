@@ -3,6 +3,7 @@
 use FpDbTest\DatabaseCopy;
 use FpDbTest\DatabaseReplace;
 use FpDbTest\Tests\DatabaseConditionTest;
+use FpDbTest\Tests\DatabaseOperationsTest;
 use FpDbTest\Tests\DatabaseQuotesTest;
 use FpDbTest\Tests\DatabaseTest;
 use FpDbTest\Tests\DatabaseTypesTest;
@@ -27,6 +28,7 @@ $dbs = [
 ];
 
 foreach ($dbs as $db) {
+    (new DatabaseOperationsTest($db))->test();
     (new DatabaseTest($db))->test();
     (new DatabaseTypesTest($db))->test();
     (new DatabaseQuotesTest($db))->test();

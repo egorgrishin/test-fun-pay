@@ -117,6 +117,11 @@ class QueryCopy extends AbstractQuery
 
         $nextChar = $this->query[$this->cursor + 1] ?? null;
         $arg = $this->formatArg($arg, $nextChar);
+
+        if ($arg === 'NULL') {
+            $this->equalNull();
+        }
+
         if (!$this->isAuto($nextChar)) {
             ++$this->cursor;
         }
@@ -146,5 +151,39 @@ class QueryCopy extends AbstractQuery
         }
         $this->text .= $this->condition;
         $this->inCondition = false;
+    }
+
+    /**
+     * Заменяет операторы сравнения =, <> и != на IS (NOT)
+     * Для корректного сравнения с NULL
+     */
+    private function equalNull(): void
+    {
+        $trimmedText = rtrim($this->text);
+        if (str_ends_with($trimmedText, '<=') || str_ends_with($trimmedText, '>=')) {
+            return;
+        }
+
+        $operatorLen = $this->getNullOperatorLen($trimmedText);
+        if ($operatorLen === 0) {
+            return;
+        }
+
+        $space = $trimmedText === $this->text ? ' ' : '';
+        $this->text = substr_replace(
+            $this->text,
+            $this->getIsNullOperator($trimmedText, $operatorLen) . $space,
+            strlen($trimmedText) - $operatorLen,
+            $operatorLen,
+        );
+    }
+
+    /**
+     * Возвращает оператор IS (NOT) для сравнения с NULL
+     */
+    private function getIsNullOperator(string $trimmedText, int $operatorLen): string
+    {
+        $space = preg_match('/\s(=|!=|<>)$/', $trimmedText) === 1 ? '' : ' ';
+        return $space . ($operatorLen === 1 ? 'IS' : 'IS NOT');
     }
 }

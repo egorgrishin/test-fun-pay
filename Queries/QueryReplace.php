@@ -11,7 +11,7 @@ use FpDbTest\Exceptions\ResolveArgException;
 class QueryReplace extends AbstractQuery
 {
     /** Длина строки query-запроса */
-    private int  $queryLen;
+    private int $queryLen;
 
     /** Индекс, с которого начинается условный блок */
     private ?int $startConditionIndex;
@@ -110,6 +110,10 @@ class QueryReplace extends AbstractQuery
         $nextChar = $this->query[$this->cursor + 1] ?? null;
         $arg = $this->formatArg($arg, $nextChar);
 
+        if ($arg === 'NULL') {
+            $this->equalNull();
+        }
+
         $replaceLen = $this->isAuto($nextChar) ? 1 : 2;
         $this->query = substr_replace($this->query, $arg, $this->cursor, $replaceLen);
         $argLen = strlen($arg);
@@ -149,5 +153,50 @@ class QueryReplace extends AbstractQuery
         $this->inCondition = false;
         $this->startConditionIndex = null;
         $this->isSkip = false;
+    }
+
+    /**
+     * Заменяет операторы сравнения =, <> и != на IS (NOT)
+     * Для корректного сравнения с NULL
+     */
+    private function equalNull(): void
+    {
+        $substr = substr($this->query, 0, $this->cursor);
+        $trimmedText = rtrim($substr);
+        $trimmedTextLen = strlen($trimmedText);
+        if (str_ends_with($trimmedText, '<=') || str_ends_with($trimmedText, '>=')) {
+            return;
+        }
+        $deletedCharsCount = strlen($substr) - $trimmedTextLen;
+
+        $operatorLen = $this->getNullOperatorLen($trimmedText);
+        if ($operatorLen === 0) {
+            return;
+        }
+
+        $operator = $this->getIsNullOperator($operatorLen, $trimmedText, $deletedCharsCount);
+        $this->query = substr_replace(
+            $this->query,
+            $operator,
+            $trimmedTextLen - $operatorLen,
+            $operatorLen,
+        );
+
+        $diffLen = strlen($operator) - $operatorLen;
+        $this->queryLen += $diffLen;
+        $this->cursor += $diffLen;
+    }
+
+    /**
+     * Возвращает оператор IS (NOT) для сравнения с NULL
+     */
+    private function getIsNullOperator(int $operatorLen, string $trimmedText, int $deletedCharsCount): string
+    {
+        $space = preg_match('/\s(=|!=|<>)$/', $trimmedText) === 1 ? '' : ' ';
+        $operator = $space . ($operatorLen === 1 ? 'IS' : 'IS NOT');
+        if ($deletedCharsCount === 0) {
+            $operator .= ' ';
+        }
+        return $operator;
     }
 }
