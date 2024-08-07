@@ -146,7 +146,7 @@ class QueryReplace extends AbstractQuery
         } else {
             $this->query = substr_replace($this->query, '', $this->startConditionIndex, 1);
             $this->query = substr_replace($this->query, '', $this->cursor - 1, 1);
-            $this->cursor -= ($this->cursor - $this->startConditionIndex + 1);
+            $this->cursor -= 2;
             $this->queryLen -= 2;
         }
 
